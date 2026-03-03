@@ -27,18 +27,30 @@ const globalStyles = `
 /* ═══════════════════════════════════════════
    Constants
    ═══════════════════════════════════════════ */
-const TABS = [
-  { id: "overview", label: "대시보드", icon: "📋" },
-  { id: "certs", label: "자격증", icon: "📜" },
-  { id: "skills", label: "스킬", icon: "⚡" },
-  { id: "courses", label: "인강", icon: "📚" },
-  { id: "notes", label: "필기노트", icon: "✏️" },
-  { id: "reading", label: "독서/콘텐츠", icon: "📖" },
-  { id: "portfolio", label: "포트폴리오", icon: "🗂️" },
-  { id: "review", label: "주간회고", icon: "🔄" },
-  { id: "events", label: "세미나", icon: "🎪" },
-  { id: "habits", label: "습관", icon: "✅" },
+const TAB_GROUPS = [
+  { group: "🌱 자기계발", tabs: [
+    { id: "overview", label: "대시보드", icon: "📋" },
+    { id: "certs", label: "자격증", icon: "📜" },
+    { id: "skills", label: "스킬", icon: "⚡" },
+    { id: "courses", label: "인강", icon: "📚" },
+    { id: "notes", label: "필기노트", icon: "✏️" },
+    { id: "reading", label: "독서/콘텐츠", icon: "📖" },
+    { id: "portfolio", label: "포트폴리오", icon: "🗂️" },
+    { id: "review", label: "주간회고", icon: "🔄" },
+    { id: "events", label: "세미나", icon: "🎪" },
+    { id: "habits", label: "습관", icon: "✅" },
+  ]},
+  { group: "💼 취준 관리", tabs: [
+    { id: "job_overview", label: "취준 대시보드", icon: "📊" },
+    { id: "experiences", label: "경험정리", icon: "⭐" },
+    { id: "cover_letters", label: "자소서", icon: "📝" },
+    { id: "job_postings", label: "공고 관리", icon: "📌" },
+    { id: "resume", label: "이력서/경력", icon: "📄" },
+    { id: "interviews", label: "면접 기록", icon: "🎤" },
+  ]},
 ];
+
+const TABS = TAB_GROUPS.flatMap(g => g.tabs);
 
 const STATUS_COLORS = {
   "취득완료": { bg: "#dff5e3", text: "#1a7f37" },
@@ -50,6 +62,20 @@ const STATUS_COLORS = {
   "초급": { bg: "#e8e8e8", text: "#656d76" },
   "중급": { bg: "#fff3cd", text: "#9a6700" },
   "고급": { bg: "#dff5e3", text: "#1a7f37" },
+  "관심": { bg: "#e8e8f8", text: "#5b21b6" },
+  "서류준비": { bg: "#fff3cd", text: "#9a6700" },
+  "지원완료": { bg: "#dbeafe", text: "#1d4ed8" },
+  "서류통과": { bg: "#dff5e3", text: "#1a7f37" },
+  "면접예정": { bg: "#fef3c7", text: "#92400e" },
+  "최종합격": { bg: "#bbf7d0", text: "#166534" },
+  "불합격": { bg: "#ffe0e0", text: "#cf222e" },
+  "대기중": { bg: "#e8e8e8", text: "#656d76" },
+  "작성중": { bg: "#fff3cd", text: "#9a6700" },
+  "완료": { bg: "#dff5e3", text: "#1a7f37" },
+  "합격": { bg: "#bbf7d0", text: "#166534" },
+  "1차": { bg: "#dbeafe", text: "#1d4ed8" },
+  "2차": { bg: "#e8e8f8", text: "#5b21b6" },
+  "최종": { bg: "#fef3c7", text: "#92400e" },
 };
 
 /* ═══════════════════════════════════════════
@@ -773,6 +799,381 @@ function Habits({ habits }) {
   );
 }
 
+
+/* ═══════════════════════════════════════════
+   SECTION: Job Overview Dashboard
+   ═══════════════════════════════════════════ */
+function JobOverview({ experiences, coverLetters, jobPostings, interviews }) {
+  const expCount = experiences.data.length;
+  const clCount = coverLetters.data.length;
+  const clDone = coverLetters.data.filter(c => c.status === "완료").length;
+  const jpTotal = jobPostings.data.length;
+  const jpApplied = jobPostings.data.filter(j => !["관심", "서류준비"].includes(j.status)).length;
+  const jpPassed = jobPostings.data.filter(j => ["서류통과", "면접예정", "최종합격"].includes(j.status)).length;
+  const ivCount = interviews.data.length;
+  const statusCounts = {};
+  jobPostings.data.forEach(j => { statusCounts[j.status] = (statusCounts[j.status] || 0) + 1; });
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <StatCard icon="⭐" label="경험 정리" value={expCount} sub="STAR" color="#9333ea" />
+        <StatCard icon="📝" label="자소서" value={`${clDone}/${clCount}`} sub="완료/전체" color="#2563eb" />
+        <StatCard icon="📌" label="지원 현황" value={jpApplied} sub={`${jpTotal}개 중`} color="#059669" />
+        <StatCard icon="🎤" label="면접" value={ivCount} sub={`${jpPassed}개 통과`} color="#d97706" />
+      </div>
+      {jpTotal > 0 && (
+        <SectionCard title="📊 지원 현황 요약">
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {["관심", "서류준비", "지원완료", "서류통과", "면접예정", "최종합격", "불합격"].map(status => (
+              <div key={status} style={{ flex: "1 1 100px", textAlign: "center", padding: "14px 10px", backgroundColor: "#fafafa", borderRadius: 10, minWidth: 90 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: (STATUS_COLORS[status] || {}).text || "#555" }}>{statusCounts[status] || 0}</div>
+                <Badge label={status} />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+      {jobPostings.data.filter(j => j.deadline && new Date(j.deadline) >= new Date()).length > 0 && (
+        <SectionCard title="⏰ 다가오는 마감일">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {jobPostings.data.filter(j => j.deadline && new Date(j.deadline) >= new Date()).sort((a, b) => new Date(a.deadline) - new Date(b.deadline)).slice(0, 5).map(j => {
+              const daysLeft = Math.ceil((new Date(j.deadline) - new Date()) / 86400000);
+              return (
+                <div key={j.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: 8, backgroundColor: daysLeft <= 3 ? "#fff5f5" : "#fafafa" }}>
+                  <div><span style={{ fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>{j.company}</span><span style={{ fontSize: 12, color: "#999", marginLeft: 8 }}>{j.position}</span></div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: daysLeft <= 3 ? "#cf222e" : daysLeft <= 7 ? "#9a6700" : "#059669" }}>D-{daysLeft}</span>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SECTION: Experiences (STAR)
+   ═══════════════════════════════════════════ */
+function Experiences({ experiences }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [expanded, setExpanded] = useState(null);
+  const openAdd = () => { setForm({ title: "", company: "", category: "기획", situation: "", task: "", action: "", result: "", keywords: "" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (!form.title) return alert("경험 제목을 입력하세요");
+    if (modal === "add") await experiences.insert(form);
+    else await experiences.update(form.id, form);
+    setModal(null);
+  };
+  const starColors = { S: "#4f46e5", T: "#059669", A: "#d97706", R: "#dc2626" };
+  return (
+    <>
+      <SectionCard title="⭐ 경험 정리 (STAR)" desc="경험을 STAR 방법론으로 정리하세요" onAdd={openAdd}>
+        {experiences.data.length === 0 ? <EmptyState icon="⭐" text="경험을 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {experiences.data.map(exp => (
+              <div key={exp.id} style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
+                <div onClick={() => setExpanded(expanded === exp.id ? null : exp.id)} style={{ padding: "16px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: expanded === exp.id ? "#f8f8ff" : "#fff" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e", marginBottom: 4 }}>{exp.title}</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {exp.company && <span style={{ fontSize: 12, color: "#666", backgroundColor: "#f0f0f5", padding: "2px 8px", borderRadius: 6 }}>🏢 {exp.company}</span>}
+                      {exp.category && <span style={{ fontSize: 12, color: "#666", backgroundColor: "#f0f0f5", padding: "2px 8px", borderRadius: 6 }}>#{exp.category}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 18, transition: "transform 0.2s", transform: expanded === exp.id ? "rotate(180deg)" : "rotate(0)" }}>▾</span>
+                    <DeleteBtn onClick={() => experiences.remove(exp.id)} />
+                  </div>
+                </div>
+                {expanded === exp.id && (
+                  <div className="fade-in" style={{ padding: "0 20px 20px", borderTop: "1px solid #f0f0f0" }}>
+                    {[{ key: "S", label: "Situation (상황)", val: exp.situation }, { key: "T", label: "Task (과제)", val: exp.task }, { key: "A", label: "Action (행동)", val: exp.action }, { key: "R", label: "Result (결과)", val: exp.result }].map(item => (
+                      <div key={item.key} style={{ marginTop: 14 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: 6, backgroundColor: starColors[item.key], color: "#fff", fontSize: 13, fontWeight: 800 }}>{item.key}</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "#555" }}>{item.label}</span>
+                        </div>
+                        <p style={{ margin: "0 0 0 32px", fontSize: 13, color: "#666", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{item.val || "(미작성)"}</p>
+                      </div>
+                    ))}
+                    {exp.keywords && <div style={{ marginTop: 14, paddingLeft: 32 }}><span style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>🔑 키워드: </span>{exp.keywords.split(",").map((k, i) => <span key={i} style={{ fontSize: 12, backgroundColor: "#e8e8f8", color: "#5b21b6", padding: "2px 8px", borderRadius: 6, marginLeft: 4 }}>{k.trim()}</span>)}</div>}
+                    <div style={{ marginTop: 14, textAlign: "right" }}><button onClick={() => openEdit(exp)} style={{ padding: "6px 16px", borderRadius: 6, border: "1px solid #ddd", backgroundColor: "#fff", fontSize: 12, fontWeight: 600, color: "#4f46e5", cursor: "pointer" }}>✏️ 수정</button></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "경험 추가" : "경험 수정"} onClose={() => setModal(null)}>
+          <FormField label="경험 제목"><input style={inputStyle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="예) BGM 온라인 채널 구축" /></FormField>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="회사/단체"><input style={inputStyle} value={form.company || ""} onChange={e => setForm({...form, company: e.target.value})} placeholder="예) BGM" /></FormField>
+            <FormField label="분류"><select style={selectStyle} value={form.category} onChange={e => setForm({...form, category: e.target.value})}><option>기획</option><option>운영</option><option>마케팅</option><option>고객서비스</option><option>봉사/멘토링</option><option>기타</option></select></FormField>
+          </div>
+          {[{ key: "situation", label: "S - Situation (상황)", ph: "어떤 상황이었나요?" }, { key: "task", label: "T - Task (과제)", ph: "어떤 과제가 있었나요?" }, { key: "action", label: "A - Action (행동)", ph: "구체적으로 무엇을 했나요?" }, { key: "result", label: "R - Result (결과)", ph: "결과/성과는? (수치 포함)" }].map(item => (
+            <FormField key={item.key} label={item.label}><textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form[item.key] || ""} onChange={e => setForm({...form, [item.key]: e.target.value})} placeholder={item.ph} /></FormField>
+          ))}
+          <FormField label="키워드 (쉼표 구분)"><input style={inputStyle} value={form.keywords || ""} onChange={e => setForm({...form, keywords: e.target.value})} placeholder="예) 매출증가, 온라인마케팅" /></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SECTION: Cover Letters
+   ═══════════════════════════════════════════ */
+function CoverLetters({ coverLetters }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const openAdd = () => { setForm({ company: "", position: "", question: "", answer: "", max_chars: 500, category: "지원동기", status: "작성중" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (!form.company || !form.question) return alert("기업명과 문항을 입력하세요");
+    const d = { ...form, char_count: (form.answer || "").length, max_chars: Number(form.max_chars) };
+    if (modal === "add") await coverLetters.insert(d);
+    else await coverLetters.update(d.id, d);
+    setModal(null);
+  };
+  const grouped = {};
+  coverLetters.data.forEach(cl => { const key = `${cl.company} - ${cl.position || ""}`; if (!grouped[key]) grouped[key] = []; grouped[key].push(cl); });
+  return (
+    <>
+      <SectionCard title="📝 자소서 관리" desc="기업별 문항과 답변을 관리하세요" onAdd={openAdd}>
+        {coverLetters.data.length === 0 ? <EmptyState icon="📝" text="자소서를 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {Object.entries(grouped).map(([key, items]) => (
+              <div key={key} style={{ border: "1px solid #eee", borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ padding: "14px 20px", backgroundColor: "#f8f8ff", borderBottom: "1px solid #eee" }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>🏢 {key}</span>
+                  <span style={{ fontSize: 12, color: "#999", marginLeft: 8 }}>{items.length}개 문항</span>
+                </div>
+                {items.map(cl => {
+                  const charPct = cl.max_chars > 0 ? Math.round((cl.answer || "").length / cl.max_chars * 100) : 0;
+                  return (
+                    <div key={cl.id} onClick={() => openEdit(cl)} style={{ padding: "14px 20px", borderBottom: "1px solid #f5f5f5", cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.backgroundColor = "#fafafa"} onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fff"}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                        <div style={{ flex: 1 }}><span style={{ fontSize: 12, color: "#888", marginRight: 8 }}>{cl.category}</span><span style={{ fontSize: 14, fontWeight: 600, color: "#333" }}>{cl.question}</span></div>
+                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}><Badge label={cl.status} /><DeleteBtn onClick={() => coverLetters.remove(cl.id)} /></div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                        <div style={{ flex: 1, height: 4, backgroundColor: "#eee", borderRadius: 100, overflow: "hidden" }}><div style={{ width: `${Math.min(charPct, 100)}%`, height: "100%", backgroundColor: charPct > 95 ? "#cf222e" : charPct > 70 ? "#d97706" : "#4f46e5", borderRadius: 100 }} /></div>
+                        <span style={{ fontSize: 11, color: charPct > 95 ? "#cf222e" : "#999", fontWeight: 600 }}>{(cl.answer || "").length}/{cl.max_chars}자</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "자소서 문항 추가" : "자소서 수정"} onClose={() => setModal(null)}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="기업명"><input style={inputStyle} value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="예) 롯데월드" /></FormField>
+            <FormField label="포지션"><input style={inputStyle} value={form.position || ""} onChange={e => setForm({...form, position: e.target.value})} /></FormField>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="문항 유형"><select style={selectStyle} value={form.category} onChange={e => setForm({...form, category: e.target.value})}><option>지원동기</option><option>성장과정</option><option>장단점</option><option>경험/역량</option><option>입사 후 포부</option><option>기타</option></select></FormField>
+            <FormField label="글자수 제한"><input type="number" style={inputStyle} value={form.max_chars} onChange={e => setForm({...form, max_chars: e.target.value})} /></FormField>
+          </div>
+          <FormField label="문항"><input style={inputStyle} value={form.question || ""} onChange={e => setForm({...form, question: e.target.value})} placeholder="예) 지원 동기를 작성해주세요" /></FormField>
+          <FormField label={`답변 (${(form.answer || "").length}/${form.max_chars}자)`}><textarea style={{ ...inputStyle, minHeight: 200, resize: "vertical" }} value={form.answer || ""} onChange={e => setForm({...form, answer: e.target.value})} placeholder="답변을 작성하세요..." /></FormField>
+          <FormField label="상태"><select style={selectStyle} value={form.status} onChange={e => setForm({...form, status: e.target.value})}><option>작성중</option><option>완료</option></select></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SECTION: Job Postings
+   ═══════════════════════════════════════════ */
+function JobPostings({ jobPostings }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [filter, setFilter] = useState("전체");
+  const openAdd = () => { setForm({ company: "", position: "", status: "관심", deadline: "", url: "", platform: "", notes: "", applied_date: "", result: "대기중" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (!form.company) return alert("기업명을 입력하세요");
+    if (modal === "add") await jobPostings.insert(form);
+    else await jobPostings.update(form.id, form);
+    setModal(null);
+  };
+  const statuses = ["전체", "관심", "서류준비", "지원완료", "서류통과", "면접예정", "최종합격", "불합격"];
+  const filtered = filter === "전체" ? jobPostings.data : jobPostings.data.filter(j => j.status === filter);
+  return (
+    <>
+      <SectionCard title="📌 공고 관리" desc="지원 현황을 한눈에 추적하세요" onAdd={openAdd}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          {statuses.map(s => (<button key={s} onClick={() => setFilter(s)} style={{ padding: "6px 14px", borderRadius: 20, border: filter === s ? "none" : "1px solid #ddd", backgroundColor: filter === s ? "#4f46e5" : "#fff", color: filter === s ? "#fff" : "#666", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>{s} ({s === "전체" ? jobPostings.data.length : jobPostings.data.filter(j => j.status === s).length})</button>))}
+        </div>
+        {filtered.length === 0 ? <EmptyState icon="📌" text="공고를 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filtered.map(j => {
+              const daysLeft = j.deadline ? Math.ceil((new Date(j.deadline) - new Date()) / 86400000) : null;
+              return (
+                <div key={j.id} onClick={() => openEdit(j)} style={{ border: "1px solid #eee", borderRadius: 10, padding: "16px 20px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#ccc"} onMouseLeave={e => e.currentTarget.style.borderColor = "#eee"}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e", marginBottom: 4 }}>{j.company}</div>
+                    <div style={{ fontSize: 12, color: "#999" }}>{j.position || ""}{j.platform ? ` · ${j.platform}` : ""}{daysLeft !== null ? ` · 마감 D${daysLeft > 0 ? `-${daysLeft}` : daysLeft === 0 ? "-Day" : `+${Math.abs(daysLeft)}`}` : ""}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Badge label={j.status} /><DeleteBtn onClick={() => jobPostings.remove(j.id)} /></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "공고 추가" : "공고 수정"} onClose={() => setModal(null)}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="기업명"><input style={inputStyle} value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="예) 롯데월드" /></FormField>
+            <FormField label="포지션"><input style={inputStyle} value={form.position || ""} onChange={e => setForm({...form, position: e.target.value})} /></FormField>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="진행 상태"><select style={selectStyle} value={form.status} onChange={e => setForm({...form, status: e.target.value})}><option>관심</option><option>서류준비</option><option>지원완료</option><option>서류통과</option><option>면접예정</option><option>최종합격</option><option>불합격</option></select></FormField>
+            <FormField label="마감일"><input type="date" style={inputStyle} value={form.deadline || ""} onChange={e => setForm({...form, deadline: e.target.value})} /></FormField>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="플랫폼"><input style={inputStyle} value={form.platform || ""} onChange={e => setForm({...form, platform: e.target.value})} placeholder="예) 사람인" /></FormField>
+            <FormField label="지원일"><input type="date" style={inputStyle} value={form.applied_date || ""} onChange={e => setForm({...form, applied_date: e.target.value})} /></FormField>
+          </div>
+          <FormField label="공고 링크"><input style={inputStyle} value={form.url || ""} onChange={e => setForm({...form, url: e.target.value})} placeholder="https://..." /></FormField>
+          <FormField label="메모"><textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.notes || ""} onChange={e => setForm({...form, notes: e.target.value})} /></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SECTION: Resume
+   ═══════════════════════════════════════════ */
+function ResumeSection({ resume }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const openAdd = () => { setForm({ category: "경력", company: "", position: "", period_start: "", period_end: "", description: "", is_current: false }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (!form.company) return alert("기관명을 입력하세요");
+    if (modal === "add") await resume.insert(form);
+    else await resume.update(form.id, form);
+    setModal(null);
+  };
+  const categories = ["경력", "학력", "자격증", "교육", "대외활동", "수상"];
+  const catIcons = { "경력": "💼", "학력": "🎓", "자격증": "📜", "교육": "📚", "대외활동": "🌍", "수상": "🏆" };
+  return (
+    <>
+      <SectionCard title="📄 이력서/경력 정리" desc="경력 사항을 시간순으로 정리하세요" onAdd={openAdd}>
+        {resume.data.length === 0 ? <EmptyState icon="📄" text="경력을 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {categories.filter(cat => resume.data.some(r => r.category === cat)).map(cat => (
+              <div key={cat}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#555", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><span>{catIcons[cat]}</span>{cat}</div>
+                <div style={{ borderLeft: "2px solid #e0e0e0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                  {resume.data.filter(r => r.category === cat).map(item => (
+                    <div key={item.id} onClick={() => openEdit(item)} style={{ position: "relative", padding: "14px 18px", border: "1px solid #eee", borderRadius: 10, cursor: "pointer", backgroundColor: "#fff" }} onMouseEnter={e => e.currentTarget.style.borderColor = "#ccc"} onMouseLeave={e => e.currentTarget.style.borderColor = "#eee"}>
+                      <div style={{ position: "absolute", left: -27, top: 18, width: 10, height: 10, borderRadius: "50%", backgroundColor: item.is_current ? "#4f46e5" : "#ccc" }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>{item.company}</div>
+                          <div style={{ fontSize: 13, color: "#666", marginTop: 2 }}>{item.position}</div>
+                          <div style={{ fontSize: 12, color: "#999", marginTop: 4 }}>{item.period_start} ~ {item.is_current ? "현재" : item.period_end}</div>
+                        </div>
+                        <DeleteBtn onClick={() => resume.remove(item.id)} />
+                      </div>
+                      {item.description && <p style={{ margin: "10px 0 0", fontSize: 13, color: "#777", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{item.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "항목 추가" : "항목 수정"} onClose={() => setModal(null)}>
+          <FormField label="분류"><select style={selectStyle} value={form.category} onChange={e => setForm({...form, category: e.target.value})}>{categories.map(c => <option key={c}>{c}</option>)}</select></FormField>
+          <FormField label="기관/회사명"><input style={inputStyle} value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="예) BGM" /></FormField>
+          <FormField label="직위/역할"><input style={inputStyle} value={form.position || ""} onChange={e => setForm({...form, position: e.target.value})} /></FormField>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="시작"><input style={inputStyle} value={form.period_start || ""} onChange={e => setForm({...form, period_start: e.target.value})} placeholder="예) 2020.03" /></FormField>
+            <FormField label="종료"><input style={inputStyle} value={form.period_end || ""} onChange={e => setForm({...form, period_end: e.target.value})} placeholder="예) 2024.02" disabled={form.is_current} /></FormField>
+          </div>
+          <FormField label=""><label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={form.is_current || false} onChange={e => setForm({...form, is_current: e.target.checked})} /> 현재 재직/재학 중</label></FormField>
+          <FormField label="설명"><textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={form.description || ""} onChange={e => setForm({...form, description: e.target.value})} placeholder="주요 업무, 성과 등" /></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   SECTION: Interviews
+   ═══════════════════════════════════════════ */
+function Interviews({ interviews }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const openAdd = () => { setForm({ company: "", position: "", interview_date: "", interview_type: "1차", questions: "", my_answers: "", feedback: "", result: "대기중" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (!form.company) return alert("기업명을 입력하세요");
+    if (modal === "add") await interviews.insert(form);
+    else await interviews.update(form.id, form);
+    setModal(null);
+  };
+  return (
+    <>
+      <SectionCard title="🎤 면접 기록" desc="면접 질문과 답변, 후기를 기록하세요" onAdd={openAdd}>
+        {interviews.data.length === 0 ? <EmptyState icon="🎤" text="면접 기록을 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {interviews.data.map(iv => (
+              <div key={iv.id} onClick={() => openEdit(iv)} style={{ border: "1px solid #eee", borderRadius: 12, padding: "18px 22px", cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.borderColor = "#ccc"} onMouseLeave={e => e.currentTarget.style.borderColor = "#eee"}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div><span style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>{iv.company}</span><span style={{ fontSize: 12, color: "#999", marginLeft: 8 }}>{iv.position}</span></div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}><Badge label={iv.interview_type} /><Badge label={iv.result} /><DeleteBtn onClick={() => interviews.remove(iv.id)} /></div>
+                </div>
+                <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>📅 {iv.interview_date || "날짜 미정"}</div>
+                {iv.questions && <div style={{ marginBottom: 8 }}><span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>❓ 질문</span><p style={{ margin: "4px 0 0 16px", fontSize: 13, color: "#666", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{iv.questions.slice(0, 100)}{iv.questions.length > 100 ? "..." : ""}</p></div>}
+                {iv.feedback && <div><span style={{ fontSize: 12, fontWeight: 600, color: "#555" }}>💡 후기</span><p style={{ margin: "4px 0 0 16px", fontSize: 13, color: "#666", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{iv.feedback.slice(0, 100)}{iv.feedback.length > 100 ? "..." : ""}</p></div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "면접 기록 추가" : "면접 기록 수정"} onClose={() => setModal(null)}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="기업명"><input style={inputStyle} value={form.company} onChange={e => setForm({...form, company: e.target.value})} /></FormField>
+            <FormField label="포지션"><input style={inputStyle} value={form.position || ""} onChange={e => setForm({...form, position: e.target.value})} /></FormField>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="면접일"><input type="date" style={inputStyle} value={form.interview_date || ""} onChange={e => setForm({...form, interview_date: e.target.value})} /></FormField>
+            <FormField label="면접 유형"><select style={selectStyle} value={form.interview_type} onChange={e => setForm({...form, interview_type: e.target.value})}><option>1차</option><option>2차</option><option>최종</option><option>실무</option><option>임원</option></select></FormField>
+          </div>
+          <FormField label="면접 질문"><textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={form.questions || ""} onChange={e => setForm({...form, questions: e.target.value})} placeholder="받은 질문들" /></FormField>
+          <FormField label="내 답변"><textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={form.my_answers || ""} onChange={e => setForm({...form, my_answers: e.target.value})} placeholder="실제로 한 답변" /></FormField>
+          <FormField label="후기/피드백"><textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={form.feedback || ""} onChange={e => setForm({...form, feedback: e.target.value})} placeholder="느낀 점, 개선할 점" /></FormField>
+          <FormField label="결과"><select style={selectStyle} value={form.result} onChange={e => setForm({...form, result: e.target.value})}><option>대기중</option><option>합격</option><option>불합격</option></select></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
 /* ═══════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════ */
@@ -790,6 +1191,12 @@ export default function App() {
   const events = useSupabaseTable("events");
   const habits = useSupabaseTable("habits", "date");
 
+  const experiences = useSupabaseTable("experiences");
+  const coverLetters = useSupabaseTable("cover_letters");
+  const jobPostings = useSupabaseTable("job_postings");
+  const resume = useSupabaseTable("resume_items");
+  const interviewsData = useSupabaseTable("interviews");
+
   const switchTab = (id) => { setActiveTab(id); setSidebarOpen(false); };
 
   const renderContent = () => {
@@ -804,6 +1211,12 @@ export default function App() {
       case "review": return <WeeklyReview reviews={reviews} />;
       case "events": return <Events events={events} />;
       case "habits": return <Habits habits={habits} />;
+      case "job_overview": return <JobOverview experiences={experiences} coverLetters={coverLetters} jobPostings={jobPostings} interviews={interviewsData} />;
+      case "experiences": return <Experiences experiences={experiences} />;
+      case "cover_letters": return <CoverLetters coverLetters={coverLetters} />;
+      case "job_postings": return <JobPostings jobPostings={jobPostings} />;
+      case "resume": return <ResumeSection resume={resume} />;
+      case "interviews": return <Interviews interviews={interviewsData} />;
       default: return null;
     }
   };
@@ -816,7 +1229,7 @@ export default function App() {
         {/* Mobile Header */}
         <div className="mobile-only" style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 900, backgroundColor: "#fff", borderBottom: "1px solid #e8e8ec", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>☰</button>
-          <span style={{ fontWeight: 700, fontSize: 16, color: "#1a1a2e" }}>🌱 자기계발</span>
+          <span style={{ fontWeight: 700, fontSize: 16, color: "#1a1a2e" }}>📱 My Dashboard</span>
           <div style={{ width: 24 }} />
         </div>
 
@@ -828,36 +1241,44 @@ export default function App() {
           width: 240, backgroundColor: "#fafafa", borderRight: "1px solid #e8e8ec", padding: "28px 16px", display: "flex", flexDirection: "column", flexShrink: 0,
           position: "fixed", top: 0, bottom: 0, left: sidebarOpen ? 0 : "-260px", zIndex: 960, transition: "left 0.25s ease",
         }}>
-          <div style={{ marginBottom: 32, padding: "0 8px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Self-Development</div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>🌱 자기계발</h1>
+          <div style={{ marginBottom: 20, padding: "0 8px" }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1a1a2e" }}>My Dashboard</h1>
           </div>
-          <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {TABS.map(tab => (
-              <button key={tab.id} onClick={() => switchTab(tab.id)}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", borderRadius: 8,
-                  backgroundColor: activeTab === tab.id ? "#e8e8f0" : "transparent", color: activeTab === tab.id ? "#1a1a2e" : "#777",
-                  fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 14, cursor: "pointer", transition: "all 0.15s", textAlign: "left", fontFamily: "inherit" }}>
-                <span style={{ fontSize: 16 }}>{tab.icon}</span>{tab.label}
-              </button>
+          <nav style={{ display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", flex: 1 }}>
+            {TAB_GROUPS.map(group => (
+              <div key={group.group}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#bbb", letterSpacing: "0.06em", padding: "14px 12px 6px", userSelect: "none" }}>{group.group}</div>
+                {group.tabs.map(tab => (
+                  <button key={tab.id} onClick={() => switchTab(tab.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "none", borderRadius: 8, width: "100%",
+                      backgroundColor: activeTab === tab.id ? "#e8e8f0" : "transparent", color: activeTab === tab.id ? "#1a1a2e" : "#777",
+                      fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 13, cursor: "pointer", transition: "all 0.15s", textAlign: "left", fontFamily: "inherit" }}>
+                    <span style={{ fontSize: 15 }}>{tab.icon}</span>{tab.label}
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
         </div>
 
         {/* Desktop Sidebar (always visible) */}
         <div className="desktop-only" style={{ width: 240, backgroundColor: "#fafafa", borderRight: "1px solid #e8e8ec", padding: "28px 16px", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={{ marginBottom: 32, padding: "0 8px" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Self-Development</div>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>🌱 자기계발</h1>
+          <div style={{ marginBottom: 20, padding: "0 8px" }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1a1a2e" }}>My Dashboard</h1>
           </div>
-          <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {TABS.map(tab => (
-              <button key={tab.id} onClick={() => switchTab(tab.id)}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", borderRadius: 8,
-                  backgroundColor: activeTab === tab.id ? "#e8e8f0" : "transparent", color: activeTab === tab.id ? "#1a1a2e" : "#777",
-                  fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 14, cursor: "pointer", transition: "all 0.15s", textAlign: "left", fontFamily: "inherit" }}>
-                <span style={{ fontSize: 16 }}>{tab.icon}</span>{tab.label}
-              </button>
+          <nav style={{ display: "flex", flexDirection: "column", gap: 2, overflowY: "auto", flex: 1 }}>
+            {TAB_GROUPS.map(group => (
+              <div key={group.group}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#bbb", letterSpacing: "0.06em", padding: "14px 12px 6px", userSelect: "none" }}>{group.group}</div>
+                {group.tabs.map(tab => (
+                  <button key={tab.id} onClick={() => switchTab(tab.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "none", borderRadius: 8, width: "100%",
+                      backgroundColor: activeTab === tab.id ? "#e8e8f0" : "transparent", color: activeTab === tab.id ? "#1a1a2e" : "#777",
+                      fontWeight: activeTab === tab.id ? 700 : 500, fontSize: 13, cursor: "pointer", transition: "all 0.15s", textAlign: "left", fontFamily: "inherit" }}>
+                    <span style={{ fontSize: 15 }}>{tab.icon}</span>{tab.label}
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
         </div>
