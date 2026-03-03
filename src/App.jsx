@@ -16,9 +16,11 @@ const globalStyles = `
   .slide-in { animation: slideIn 0.25s ease; }
   @media (max-width: 768px) {
     .desktop-only { display: none !important; }
+    .main-content { padding: 16px !important; padding-top: 72px !important; }
   }
   @media (min-width: 769px) {
     .mobile-only { display: none !important; }
+    .mobile-sidebar { display: none !important; }
   }
 `;
 
@@ -821,14 +823,11 @@ export default function App() {
         {/* Mobile Overlay */}
         {sidebarOpen && <div className="mobile-only" style={{ position: "fixed", inset: 0, zIndex: 950, backgroundColor: "rgba(0,0,0,0.3)" }} onClick={() => setSidebarOpen(false)} />}
 
-        {/* Sidebar */}
-        <div style={{
+        {/* Mobile Sidebar (slide-in) */}
+        <div className="mobile-sidebar" style={{
           width: 240, backgroundColor: "#fafafa", borderRight: "1px solid #e8e8ec", padding: "28px 16px", display: "flex", flexDirection: "column", flexShrink: 0,
           position: "fixed", top: 0, bottom: 0, left: sidebarOpen ? 0 : "-260px", zIndex: 960, transition: "left 0.25s ease",
-          ...(typeof window !== "undefined" && window.innerWidth > 768 ? { position: "sticky", left: 0 } : {}),
-        }}
-          className={typeof window !== "undefined" && window.innerWidth <= 768 ? "" : "desktop-sidebar"}
-        >
+        }}>
           <div style={{ marginBottom: 32, padding: "0 8px" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 4 }}>Self-Development</div>
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#1a1a2e" }}>🌱 자기계발</h1>
@@ -864,8 +863,7 @@ export default function App() {
         </div>
 
         {/* Main Content */}
-        <div style={{ flex: 1, padding: "32px 40px", overflowY: "auto", maxHeight: "100vh", paddingTop: typeof window !== "undefined" && window.innerWidth <= 768 ? 72 : 32 }}
-          className="main-content">
+        <div className="main-content" style={{ flex: 1, padding: "32px 40px", overflowY: "auto", maxHeight: "100vh" }}>
           {renderContent()}
         </div>
       </div>
