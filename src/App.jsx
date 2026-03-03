@@ -40,6 +40,12 @@ const TAB_GROUPS = [
     { id: "events", label: "세미나", icon: "🎪" },
     { id: "habits", label: "습관", icon: "✅" },
   ]},
+  { group: "📔 다이어리", tabs: [
+    { id: "diary_overview", label: "다이어리 홈", icon: "📊" },
+    { id: "diary", label: "일기", icon: "📔" },
+    { id: "budget", label: "가계부", icon: "💰" },
+    { id: "todos", label: "할 일", icon: "✅" },
+  ]},
   { group: "💼 취준 관리", tabs: [
     { id: "job_overview", label: "취준 대시보드", icon: "📊" },
     { id: "experiences", label: "경험정리", icon: "⭐" },
@@ -1174,6 +1180,240 @@ function Interviews({ interviews }) {
     </>
   );
 }
+
+function DiaryOverview({ diary, budget, todos }) {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  const monthDiary = diary.data.filter(d => d.date && d.date.startsWith(thisMonth));
+  const monthBudget = budget.data.filter(b => b.date && b.date.startsWith(thisMonth));
+  const income = monthBudget.filter(b => b.type === "수입").reduce((s, b) => s + (b.amount || 0), 0);
+  const expense = monthBudget.filter(b => b.type === "지출").reduce((s, b) => s + (b.amount || 0), 0);
+  const todoPending = todos.data.filter(t => !t.completed).length;
+  const todoDone = todos.data.filter(t => t.completed).length;
+  const avgMood = monthDiary.length > 0 ? (monthDiary.reduce((s, d) => s + (d.mood_score || 3), 0) / monthDiary.length).toFixed(1) : "-";
+  const moodLabel = avgMood >= 4 ? "좋음" : avgMood >= 3 ? "보통" : avgMood >= 0 ? "우울" : "-";
+  const catExpense = {};
+  monthBudget.filter(b => b.type === "지출").forEach(b => { catExpense[b.category] = (catExpense[b.category] || 0) + (b.amount || 0); });
+  const sortedCats = Object.entries(catExpense).sort((a, b) => b[1] - a[1]);
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <StatCard icon="📔" label="이번 달 일기" value={monthDiary.length} sub="일" color="#9333ea" />
+        <StatCard icon="😊" label="평균 기분" value={avgMood} sub={moodLabel} color="#ec4899" />
+        <StatCard icon="💰" label="이번 달 지출" value={`${Math.round(expense/10000)}만`} sub={`수입 ${Math.round(income/10000)}만`} color="#059669" />
+        <StatCard icon="✅" label="할 일" value={todoPending} sub={`${todoDone}개 완료`} color="#2563eb" />
+      </div>
+      {sortedCats.length > 0 && (
+        <SectionCard title="📊 이번 달 카테고리별 지출">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {sortedCats.map(([cat, amt]) => { const pct = expense > 0 ? Math.round(amt / expense * 100) : 0; return (
+              <div key={cat} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ minWidth: 60, fontSize: 13, fontWeight: 600, color: "#555" }}>{cat}</span>
+                <div style={{ flex: 1 }}><ProgressBar value={pct} color="#4f46e5" /></div>
+                <span style={{ minWidth: 80, textAlign: "right", fontSize: 13, fontWeight: 600, color: "#333" }}>{amt.toLocaleString()}원</span>
+              </div>); })}
+            <div style={{ borderTop: "1px solid #eee", paddingTop: 10, display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700 }}><span style={{ color: "#cf222e" }}>총 지출</span><span style={{ color: "#cf222e" }}>{expense.toLocaleString()}원</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700 }}><span style={{ color: "#059669" }}>총 수입</span><span style={{ color: "#059669" }}>{income.toLocaleString()}원</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700 }}><span>잔액</span><span style={{ color: income - expense >= 0 ? "#059669" : "#cf222e" }}>{(income - expense).toLocaleString()}원</span></div>
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  );
+}
+
+function Diary({ diary }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const moods = [{e:"😄",s:5,l:"최고"},{e:"😊",s:4,l:"좋음"},{e:"😐",s:3,l:"보통"},{e:"😔",s:2,l:"별로"},{e:"😢",s:1,l:"최악"}];
+  const weathers = ["☀️","⛅","☁️","🌧️","❄️","🌪️"];
+  const openAdd = () => { setForm({ date: new Date().toISOString().slice(0,10), title: "", content: "", mood: "😊", mood_score: 4, weather: "☀️", tags: "" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    if (modal === "add") await diary.insert({ ...form, mood_score: Number(form.mood_score) });
+    else await diary.update(form.id, { ...form, mood_score: Number(form.mood_score) });
+    setModal(null);
+  };
+  return (
+    <>
+      <SectionCard title="📔 일상 일기" desc="하루를 기록하세요" onAdd={openAdd}>
+        {diary.data.length === 0 ? <EmptyState icon="📔" text="일기를 작성해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {diary.data.map(d => (
+              <div key={d.id} onClick={() => openEdit(d)} style={{ border: "1px solid #eee", borderRadius: 12, padding: "18px 22px", cursor: "pointer", transition: "all 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#ccc"} onMouseLeave={e => e.currentTarget.style.borderColor = "#eee"}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 28 }}>{d.mood}</span>
+                    <div><div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>{d.title || d.date}</div><div style={{ fontSize: 12, color: "#999" }}>{d.date} {d.weather}</div></div>
+                  </div>
+                  <DeleteBtn onClick={() => diary.remove(d.id)} />
+                </div>
+                {d.content && <p style={{ margin: 0, fontSize: 13, color: "#666", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{d.content.slice(0, 150)}{d.content.length > 150 ? "..." : ""}</p>}
+                {d.tags && <div style={{ marginTop: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>{d.tags.split(",").map((t,i) => <span key={i} style={{ fontSize: 11, backgroundColor: "#f0f0f5", padding: "2px 8px", borderRadius: 6, color: "#666" }}>#{t.trim()}</span>)}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "일기 작성" : "일기 수정"} onClose={() => setModal(null)}>
+          <FormField label="날짜"><input type="date" style={inputStyle} value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></FormField>
+          <FormField label="제목"><input style={inputStyle} value={form.title || ""} onChange={e => setForm({...form, title: e.target.value})} placeholder="오늘 하루 한줄 제목" /></FormField>
+          <FormField label="기분">
+            <div style={{ display: "flex", gap: 8 }}>
+              {moods.map(m => (<button key={m.s} onClick={() => setForm({...form, mood: m.e, mood_score: m.s})} style={{ flex: 1, padding: "10px 0", border: form.mood === m.e ? "2px solid #4f46e5" : "1px solid #ddd", borderRadius: 10, backgroundColor: form.mood === m.e ? "#f0f0ff" : "#fff", cursor: "pointer", textAlign: "center" }}><div style={{ fontSize: 24 }}>{m.e}</div><div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{m.l}</div></button>))}
+            </div>
+          </FormField>
+          <FormField label="날씨">
+            <div style={{ display: "flex", gap: 8 }}>
+              {weathers.map(w => (<button key={w} onClick={() => setForm({...form, weather: w})} style={{ padding: "8px 14px", border: form.weather === w ? "2px solid #4f46e5" : "1px solid #ddd", borderRadius: 8, backgroundColor: form.weather === w ? "#f0f0ff" : "#fff", cursor: "pointer", fontSize: 20 }}>{w}</button>))}
+            </div>
+          </FormField>
+          <FormField label="오늘의 기록"><textarea style={{ ...inputStyle, minHeight: 180, resize: "vertical" }} value={form.content || ""} onChange={e => setForm({...form, content: e.target.value})} placeholder="오늘 있었던 일, 느낌 점..." /></FormField>
+          <FormField label="태그 (쉼표 구분)"><input style={inputStyle} value={form.tags || ""} onChange={e => setForm({...form, tags: e.target.value})} placeholder="예) 산책, 카페, 고양이" /></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "작성" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function Budget({ budget }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0,7));
+  const openAdd = (type) => { setForm({ date: new Date().toISOString().slice(0,10), type: type || "지출", category: type === "수입" ? "급여" : "식비", amount: 0, description: "", payment_method: "카드" }); setModal("add"); };
+  const openEdit = (item) => { setForm({ ...item }); setModal("edit"); };
+  const save = async () => {
+    const d = { ...form, amount: Number(form.amount) };
+    if (modal === "add") await budget.insert(d);
+    else await budget.update(d.id, d);
+    setModal(null);
+  };
+  const filtered = budget.data.filter(b => b.date && b.date.startsWith(monthFilter));
+  const income = filtered.filter(b => b.type === "수입").reduce((s, b) => s + (b.amount || 0), 0);
+  const expense = filtered.filter(b => b.type === "지출").reduce((s, b) => s + (b.amount || 0), 0);
+  const expenseCats = ["식비", "교통", "문화", "쇼핑", "생활", "의료", "교육", "기타"];
+  const incomeCats = ["급여", "용돈", "부수입", "기타"];
+  return (
+    <>
+      <SectionCard title="💰 가계부">
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="month" style={{ ...inputStyle, width: "auto" }} value={monthFilter} onChange={e => setMonthFilter(e.target.value)} />
+          <button onClick={() => openAdd("지출")} style={{ padding: "8px 16px", borderRadius: 8, border: "none", backgroundColor: "#ef4444", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>- 지출</button>
+          <button onClick={() => openAdd("수입")} style={{ padding: "8px 16px", borderRadius: 8, border: "none", backgroundColor: "#059669", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ 수입</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+          <div style={{ textAlign: "center", padding: 16, backgroundColor: "#f0fdf4", borderRadius: 10 }}><div style={{ fontSize: 12, color: "#888" }}>수입</div><div style={{ fontSize: 20, fontWeight: 800, color: "#059669" }}>{income.toLocaleString()}</div></div>
+          <div style={{ textAlign: "center", padding: 16, backgroundColor: "#fef2f2", borderRadius: 10 }}><div style={{ fontSize: 12, color: "#888" }}>지출</div><div style={{ fontSize: 20, fontWeight: 800, color: "#ef4444" }}>{expense.toLocaleString()}</div></div>
+          <div style={{ textAlign: "center", padding: 16, backgroundColor: "#f8f8fa", borderRadius: 10 }}><div style={{ fontSize: 12, color: "#888" }}>잔액</div><div style={{ fontSize: 20, fontWeight: 800, color: income-expense >= 0 ? "#059669" : "#ef4444" }}>{(income-expense).toLocaleString()}</div></div>
+        </div>
+        {filtered.length === 0 ? <EmptyState icon="💰" text="내역을 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {filtered.map(b => (
+              <div key={b.id} onClick={() => openEdit(b)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderRadius: 8, backgroundColor: "#fafafa", cursor: "pointer" }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f0f0f5"} onMouseLeave={e => e.currentTarget.style.backgroundColor = "#fafafa"}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: "#999", minWidth: 72 }}>{b.date}</span>
+                  <span style={{ fontSize: 12, backgroundColor: b.type === "수입" ? "#dff5e3" : "#ffe0e0", color: b.type === "수입" ? "#1a7f37" : "#cf222e", padding: "2px 8px", borderRadius: 6, fontWeight: 600 }}>{b.category}</span>
+                  <span style={{ fontSize: 13, color: "#555" }}>{b.description || ""}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: b.type === "수입" ? "#059669" : "#ef4444" }}>{b.type === "수입" ? "+" : "-"}{(b.amount||0).toLocaleString()}원</span>
+                  <DeleteBtn onClick={() => budget.remove(b.id)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title={modal === "add" ? "내역 추가" : "내역 수정"} onClose={() => setModal(null)}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="날짜"><input type="date" style={inputStyle} value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></FormField>
+            <FormField label="유형"><select style={selectStyle} value={form.type} onChange={e => setForm({...form, type: e.target.value, category: e.target.value === "수입" ? "급여" : "식비"})}><option>지출</option><option>수입</option></select></FormField>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="카테고리"><select style={selectStyle} value={form.category} onChange={e => setForm({...form, category: e.target.value})}>{(form.type === "수입" ? incomeCats : expenseCats).map(c => <option key={c}>{c}</option>)}</select></FormField>
+            <FormField label="금액"><input type="number" style={inputStyle} value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0" /></FormField>
+          </div>
+          <FormField label="내용"><input style={inputStyle} value={form.description || ""} onChange={e => setForm({...form, description: e.target.value})} placeholder="예) 점심 김치찌개" /></FormField>
+          <FormField label="결제수단"><select style={selectStyle} value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})}><option>카드</option><option>현금</option><option>계좌이체</option><option>기타</option></select></FormField>
+          <button style={btnPrimary} onClick={save}>{modal === "add" ? "추가" : "저장"}</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function Todos({ todos }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [showDone, setShowDone] = useState(false);
+  const openAdd = () => { setForm({ title: "", completed: false, priority: "보통", due_date: "", category: "일반" }); setModal("add"); };
+  const save = async () => {
+    if (!form.title) return alert("할 일을 입력하세요");
+    if (modal === "add") await todos.insert(form);
+    else await todos.update(form.id, form);
+    setModal(null);
+  };
+  const toggle = async (item) => { await todos.update(item.id, { completed: !item.completed }); };
+  const priorityColors = { "높음": "#ef4444", "보통": "#d97706", "낮음": "#059669" };
+  const pending = todos.data.filter(t => !t.completed);
+  const done = todos.data.filter(t => t.completed);
+  return (
+    <>
+      <SectionCard title="✅ 할 일" onAdd={openAdd}>
+        {pending.length === 0 && done.length === 0 ? <EmptyState icon="✅" text="할 일을 추가해보세요!" /> : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {pending.map(t => (
+              <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 8, backgroundColor: "#fafafa" }}>
+                <input type="checkbox" checked={false} onChange={() => toggle(t)} style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#4f46e5" }} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#333" }}>{t.title}</span>
+                  <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                    {t.category !== "일반" && <span style={{ fontSize: 11, backgroundColor: "#f0f0f5", padding: "1px 6px", borderRadius: 4, color: "#888" }}>{t.category}</span>}
+                    <span style={{ fontSize: 11, color: priorityColors[t.priority], fontWeight: 600 }}>{t.priority}</span>
+                    {t.due_date && <span style={{ fontSize: 11, color: "#999" }}>📅 {t.due_date}</span>}
+                  </div>
+                </div>
+                <DeleteBtn onClick={() => todos.remove(t.id)} />
+              </div>
+            ))}
+            {done.length > 0 && (
+              <>
+                <button onClick={() => setShowDone(!showDone)} style={{ alignSelf: "flex-start", padding: "6px 12px", border: "none", backgroundColor: "transparent", color: "#999", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+                  {showDone ? "▾" : "▸"} 완료 ({done.length})
+                </button>
+                {showDone && done.map(t => (
+                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 8, backgroundColor: "#fafafa", opacity: 0.5 }}>
+                    <input type="checkbox" checked={true} onChange={() => toggle(t)} style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#4f46e5" }} />
+                    <span style={{ fontSize: 14, color: "#999", textDecoration: "line-through", flex: 1 }}>{t.title}</span>
+                    <DeleteBtn onClick={() => todos.remove(t.id)} />
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </SectionCard>
+      {modal && (
+        <Modal title="할 일 추가" onClose={() => setModal(null)}>
+          <FormField label="할 일"><input style={inputStyle} value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="예) 자소서 초안 작성" /></FormField>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <FormField label="우선순위"><select style={selectStyle} value={form.priority} onChange={e => setForm({...form, priority: e.target.value})}><option>높음</option><option>보통</option><option>낮음</option></select></FormField>
+            <FormField label="마감일"><input type="date" style={inputStyle} value={form.due_date || ""} onChange={e => setForm({...form, due_date: e.target.value})} /></FormField>
+          </div>
+          <FormField label="카테고리"><select style={selectStyle} value={form.category} onChange={e => setForm({...form, category: e.target.value})}><option>일반</option><option>취준</option><option>공부</option><option>생활</option><option>운동</option></select></FormField>
+          <button style={btnPrimary} onClick={save}>추가</button>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+
 /* ═══════════════════════════════════════════
    MAIN APP
    ═══════════════════════════════════════════ */
@@ -1197,6 +1437,10 @@ export default function App() {
   const resume = useSupabaseTable("resume_items");
   const interviewsData = useSupabaseTable("interviews");
 
+  const diaryData = useSupabaseTable("diary", "date");
+  const budgetData = useSupabaseTable("budget", "date");
+  const todosData = useSupabaseTable("todos");
+
   const switchTab = (id) => { setActiveTab(id); setSidebarOpen(false); };
 
   const renderContent = () => {
@@ -1217,6 +1461,10 @@ export default function App() {
       case "job_postings": return <JobPostings jobPostings={jobPostings} />;
       case "resume": return <ResumeSection resume={resume} />;
       case "interviews": return <Interviews interviews={interviewsData} />;
+      case "diary_overview": return <DiaryOverview diary={diaryData} budget={budgetData} todos={todosData} />;
+      case "diary": return <Diary diary={diaryData} />;
+      case "budget": return <Budget budget={budgetData} />;
+      case "todos": return <Todos todos={todosData} />;
       default: return null;
     }
   };
